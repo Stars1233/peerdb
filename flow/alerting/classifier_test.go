@@ -671,6 +671,30 @@ func TestMongoPoolErrorShouldBeRecoverable(t *testing.T) {
 	}, errInfo, "Unexpected error info")
 }
 
+func TestMongoCursorErrors(t *testing.T) {
+	err := mongo.CommandError{
+		Code:    6,
+		Message: "(HostUnreachable) Error on remote shard test.mongodb.net:27017 :: caused by :: interrupted at shutdown",
+	}
+	errorClass, errInfo := GetErrorClass(t.Context(), fmt.Errorf("cursor error: %w", err))
+	assert.Equal(t, ErrorRetryRecoverable, errorClass)
+	assert.Equal(t, ErrorInfo{
+		Source: ErrorSourceMongoDB,
+		Code:   "6",
+	}, errInfo)
+
+	err = mongo.CommandError{
+		Code:    43,
+		Message: "cursor id 1234567890 not found",
+	}
+	errorClass, errInfo = GetErrorClass(t.Context(), fmt.Errorf("cursor error: %w", err))
+	assert.Equal(t, ErrorRetryRecoverable, errorClass)
+	assert.Equal(t, ErrorInfo{
+		Source: ErrorSourceMongoDB,
+		Code:   "43",
+	}, errInfo)
+}
+
 func TestAuroraMySQLZeroDowntimePatchErrorShouldBeRecoverable(t *testing.T) {
 	// Simulate Aurora MySQL Zero Downtime Patch error
 	mysqlErr := &mysql.MyError{
