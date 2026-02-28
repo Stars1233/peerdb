@@ -109,7 +109,7 @@ func NewPostgresConnector(ctx context.Context, env map[string]string, pgConfig *
 		metadataSchema = *pgConfig.MetadataSchema
 	}
 
-	return &PostgresConnector{
+	connector := &PostgresConnector{
 		logger:                 logger,
 		Config:                 pgConfig,
 		ssh:                    tunnel,
@@ -125,7 +125,28 @@ func NewPostgresConnector(ctx context.Context, env map[string]string, pgConfig *
 		pgVersion:              0,
 		typeMap:                pgtype.NewMap(),
 		rdsAuth:                rdsAuth,
-	}, nil
+	}
+
+	tunnel.StartKeepalive(context.Background(), func() {
+		connector.logger.Info("SSH keepalive failed, closing connections")
+		bgCtx := context.Background()
+		timeout, cancel := context.WithTimeout(bgCtx, 5*time.Second)
+		defer cancel()
+		if err := connector.conn.Close(timeout); err != nil {
+			connector.logger.Error("Failed to close Postgres connection on SSH keepalive failure",
+				slog.Any("error", err))
+		}
+		if connector.replConn != nil {
+			timeout2, cancel2 := context.WithTimeout(bgCtx, 5*time.Second)
+			defer cancel2()
+			if err := connector.replConn.Close(timeout2); err != nil {
+				connector.logger.Error("Failed to close Postgres replication connection on SSH keepalive failure",
+					slog.Any("error", err))
+			}
+		}
+	})
+
+	return connector, nil
 }
 
 func ParseConfig(connectionString string, pgConfig *protos.PostgresConfig) (*pgx.ConnConfig, error) {

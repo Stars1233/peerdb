@@ -72,6 +72,9 @@ jobs:
           - 42001:42001
           - 42002:42002
           - 42003:42003
+          - 49001:49001
+          - 49002:49002
+          - 49003:49003
       openssh:
         image: linuxserver/openssh-server:latest@sha256:697d980725e9ca08bbec7531f3052dbc540a1889aa2c39b24fb82248b7799a1d
         ports:
