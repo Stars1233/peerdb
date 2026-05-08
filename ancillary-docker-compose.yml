@@ -215,5 +215,5 @@ volumes:
 
 networks:
   default:
-    name: peerdb_network
+    name: peerdb_network_${DEFAULT_TILT_PORT:-default}
     external: true
